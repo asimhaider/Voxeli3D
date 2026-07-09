@@ -1,0 +1,111 @@
+/* ==========================================================================
+   VOXELIS 3D SOLUTIONS — DESIGN TOKENS
+   Edit colors, fonts, and spacing here to restyle the entire site.
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  /* Colors */
+  --color-black: #0B0B0C;
+  --color-black-soft: #17171A;
+  --color-white: #FFFFFF;
+  --color-yellow: #FFC700;
+  --color-yellow-dim: #EBB700;
+  --color-cream: #FFF8E1;
+  --color-grey: #6B6B65;
+  --color-grey-light: #C9C8C0;
+  --color-line: rgba(11, 11, 12, 0.1);
+  --color-line-on-dark: rgba(255, 255, 255, 0.14);
+
+  /* Type */
+  --font-display: 'Space Grotesk', 'Helvetica Neue', sans-serif;
+  --font-body: 'Inter', 'Helvetica Neue', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* Layout */
+  --page-max: 1180px;
+  --radius-sm: 4px;
+  --radius-md: 10px;
+  --section-pad: clamp(64px, 9vw, 128px);
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  color: var(--color-black);
+  background: var(--color-white);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+p { margin: 0; }
+
+a { color: inherit; text-decoration: none; }
+
+button { font-family: inherit; cursor: pointer; }
+
+img, svg { display: block; max-width: 100%; }
+
+.container {
+  max-width: var(--page-max);
+  margin: 0 auto;
+  padding: 0 clamp(20px, 5vw, 48px);
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-grey);
+}
+
+.eyebrow--on-dark { color: var(--color-yellow); }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 26px;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: 14px;
+  border: 1.5px solid transparent;
+  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.btn:active { transform: scale(0.97); }
+
+.btn--primary {
+  background: var(--color-yellow);
+  color: var(--color-black);
+}
+.btn--primary:hover { background: var(--color-yellow-dim); }
+
+.btn--outline {
+  background: transparent;
+  border-color: var(--color-black);
+  color: var(--color-black);
+}
+.btn--outline:hover { background: var(--color-black); color: var(--color-white); }
+
+.btn--outline-light {
+  background: transparent;
+  border-color: rgba(255,255,255,0.4);
+  color: var(--color-white);
+}
+.btn--outline-light:hover { border-color: var(--color-yellow); color: var(--color-yellow); }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
