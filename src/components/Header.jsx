@@ -5,6 +5,7 @@ import LogoMark from './icons/LogoMark';
 const NAV_LINKS = [
   { label: 'Capabilities', href: '#verticals' },
   { label: 'Process', href: '#process' },
+  { label: 'Custom order', href: '#custom-upload' },
   { label: 'Work', href: '#gallery' },
   { label: 'Contact', href: '#contact' },
 ];

@@ -1,20 +1,44 @@
+import { useState } from 'react';
+import { API_URL } from '../config';
+
 export default function CTASection() {
+  const [status, setStatus] = useState('idle'); // idle | sending | done | error
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const email = e.target.email.value;
+    setStatus('sending');
+    try {
+      const res = await fetch(`${API_URL}/api/quotes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      if (!res.ok) throw new Error();
+      setStatus('done');
+      e.target.reset();
+    } catch {
+      setStatus('error');
+    }
+  };
+
   return (
     <section id="contact" className="cta">
       <div className="container cta__inner">
         <h2 className="cta__title">Have a part in mind?</h2>
         <p className="cta__sub">Send us your file or idea — we'll come back with material options, pricing, and a lead time within 24 hours.</p>
-        <form
-          className="cta__form"
-          onSubmit={(e) => {
-            e.preventDefault();
-            /* Wire this up to your form handler, email service, or backend of choice. */
-            alert('Thanks — this is a demo form. Connect it to your backend or a service like Formspree.');
-          }}
-        >
-          <input type="email" required placeholder="you@company.com" aria-label="Email address" />
-          <button type="submit" className="btn btn--primary">Request a quote</button>
-        </form>
+
+        {status === 'done' ? (
+          <p className="cta__confirm">Thanks — we'll be in touch shortly.</p>
+        ) : (
+          <form className="cta__form" onSubmit={handleSubmit}>
+            <input name="email" type="email" required placeholder="you@company.com" aria-label="Email address" />
+            <button type="submit" className="btn btn--primary" disabled={status === 'sending'}>
+              {status === 'sending' ? 'Sending…' : 'Request a quote'}
+            </button>
+          </form>
+        )}
+        {status === 'error' && <p className="cta__error">Something went wrong — check that the backend is running and try again.</p>}
       </div>
 
       <style>{`
@@ -58,6 +82,8 @@ export default function CTASection() {
           outline: 2px solid var(--color-black);
           outline-offset: 2px;
         }
+        .cta__confirm { margin-top: 28px; font-weight: 600; font-size: 15px; }
+        .cta__error { margin-top: 16px; font-size: 13.5px; color: rgba(11,11,12,0.7); }
       `}</style>
     </section>
   );
