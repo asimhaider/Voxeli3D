@@ -63,13 +63,7 @@ router.post('/:id/generate-3d', async (req, res) => {
   const record = records.find((r) => r.id === req.params.id);
   if (!record) return res.status(404).json({ error: 'Order not found' });
 
-  const requestBaseUrl = `${req.protocol}://${req.get('host')}`;
-  const publicBaseUrl = (process.env.PUBLIC_API_URL || requestBaseUrl).replace(/\/$/, '');
-  if (false && /^https?:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/i.test(publicBaseUrl)) {
-    return res.status(422).json({ error: '3D preview needs a public backend URL. Set PUBLIC_API_URL in server/.env when deploying.' });
-  }
-  let imageUrl = `${publicBaseUrl}${record.images[0]}`;
-  if (!imageUrl) return res.status(400).json({ error: 'imageUrl is required — pass a publicly accessible URL or base64 data URI' });
+  let imageUrl;
 
   const filename = path.basename(record.images[0]);
   const extension = path.extname(filename).toLowerCase();
