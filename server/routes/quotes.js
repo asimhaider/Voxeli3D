@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { nanoid } from 'nanoid';
 import { append, readAll } from '../lib/db.js';
 import { notify } from '../lib/mailer.js';
+import { requireAdmin } from '../middleware/admin.js';
 
 const router = Router();
 
@@ -28,7 +29,7 @@ router.post('/', async (req, res) => {
 });
 
 /** GET /api/quotes — simple listing for you to check submissions (add auth before going live). */
-router.get('/', async (req, res) => {
+router.get('/', requireAdmin, async (req, res) => {
   const records = await readAll('quotes');
   res.json(records);
 });

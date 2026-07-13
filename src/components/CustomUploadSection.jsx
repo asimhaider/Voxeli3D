@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { API_URL } from '../config';
 
 /**
@@ -11,7 +11,7 @@ import { API_URL } from '../config';
  *   3. GET  /api/custom-orders/generate-3d/:taskId — polled for progress/result
  */
 const MAX_FILES = 5;
-const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
+const ACCEPTED_TYPES = ['image/png', 'image/jpeg'];
 const POLL_INTERVAL_MS = 4000;
 
 export default function CustomUploadSection() {
@@ -22,6 +22,11 @@ export default function CustomUploadSection() {
   const [preview, setPreview] = useState(null); // { status, progress, modelUrl }
   const [previewError, setPreviewError] = useState(null);
   const inputRef = useRef(null);
+  const pollRef = useRef(null);
+  const previewUrls = useMemo(() => files.map((file) => URL.createObjectURL(file)), [files]);
+
+  useEffect(() => () => previewUrls.forEach((url) => URL.revokeObjectURL(url)), [previewUrls]);
+  useEffect(() => () => clearInterval(pollRef.current), []);
 
   const addFiles = (fileList) => {
     const incoming = Array.from(fileList).filter((f) => ACCEPTED_TYPES.includes(f.type));
@@ -55,20 +60,19 @@ export default function CustomUploadSection() {
     files.forEach((f) => form.append('images', f));
 
     try {
-      const orderRes = await fetch("https://api.meshy.ai/openapi/v1/image-to-3d", { method: 'POST', body: form });
+      const orderRes = await fetch(`${API_URL}/api/custom-orders`, { method: 'POST', body: form });
       const orderData = await orderRes.json();
       if (!orderRes.ok) throw new Error(orderData.error || 'Could not submit request');
 
       setStatus('done'); // request is saved regardless of what happens with 3D generation below
 
       // Try to kick off an automatic 3D preview from the first image.
-      const imageUrl = `${API_URL}${orderData.images[0]}`;
       setPreview({ status: 'PENDING', progress: 0 });
 
       const genRes = await fetch(`${API_URL}/api/custom-orders/${orderData.id}/generate-3d`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageUrl }),
+        body: JSON.stringify({}),
       });
       const genData = await genRes.json();
       if (!genRes.ok) throw new Error(genData.error || '3D preview is not available yet');
@@ -80,7 +84,8 @@ export default function CustomUploadSection() {
   };
 
   const pollStatus = (taskId) => {
-    const interval = setInterval(async () => {
+    clearInterval(pollRef.current);
+    pollRef.current = setInterval(async () => {
       try {
         const res = await fetch(`${API_URL}/api/custom-orders/generate-3d/${taskId}`);
         const data = await res.json();
@@ -90,20 +95,26 @@ export default function CustomUploadSection() {
           status: data.status,
           progress: data.progress ?? 0,
           taskId,
-          modelUrl: data.model_urls?.glb,
+          modelUrl: data.model_urls?.glb
+            ? `${API_URL}/api/custom-orders/generate-3d/${taskId}/model`
+            : null,
         });
 
         if (data.status === 'SUCCEEDED' || data.status === 'FAILED') {
-          clearInterval(interval);
+          clearInterval(pollRef.current);
+          pollRef.current = null;
         }
       } catch (err) {
         setPreviewError(err.message || 'Lost connection while checking generation status');
-        clearInterval(interval);
+        clearInterval(pollRef.current);
+        pollRef.current = null;
       }
     }, POLL_INTERVAL_MS);
   };
 
   const reset = () => {
+    clearInterval(pollRef.current);
+    pollRef.current = null;
     setFiles([]);
     setNotes('');
     setStatus('idle');
@@ -178,7 +189,7 @@ export default function CustomUploadSection() {
                 Drop images here, or click to browse
               </span>
               <span className="upload-dropzone__hint">
-                PNG, JPG or WEBP — up to {MAX_FILES} images
+                PNG or JPG — up to {MAX_FILES} images
               </span>
             </div>
 
@@ -186,7 +197,7 @@ export default function CustomUploadSection() {
               <div className="upload-previews">
                 {files.map((file, i) => (
                   <div key={file.name + i} className="upload-preview">
-                    <img src={URL.createObjectURL(file)} alt={`Reference ${i + 1}`} />
+                    <img src={previewUrls[i]} alt={`Reference ${i + 1}`} />
                     <button type="button" aria-label={`Remove ${file.name}`} onClick={() => removeFile(i)}>&times;</button>
                   </div>
                 ))}

@@ -1,10 +1,17 @@
 import { Router } from 'express';
+import { readFile } from 'fs/promises';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { nanoid } from 'nanoid';
 import { append, readAll, updateById } from '../lib/db.js';
 import { notify } from '../lib/mailer.js';
 import { upload } from '../middleware/upload.js';
+import { requireAdmin } from '../middleware/admin.js';
 
 const router = Router();
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const UPLOAD_DIR = path.join(__dirname, '..', 'uploads');
+const IMAGE_MIME_TYPES = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png' };
 
 /**
  * POST /api/custom-orders
@@ -17,7 +24,6 @@ router.post('/', upload.array('images', 5), async (req, res) => {
   if (!req.files || req.files.length === 0) {
     return res.status(400).json({ error: 'At least one image is required' });
   }
-
   const record = {
     id: nanoid(10),
     type: 'custom-order',
@@ -38,7 +44,7 @@ router.post('/', upload.array('images', 5), async (req, res) => {
 });
 
 /** GET /api/custom-orders — listing for you to review submissions. */
-router.get('/', async (req, res) => {
+router.get('/', requireAdmin, async (req, res) => {
   const records = await readAll('custom-orders');
   res.json(records);
 });
@@ -57,10 +63,22 @@ router.post('/:id/generate-3d', async (req, res) => {
   const record = records.find((r) => r.id === req.params.id);
   if (!record) return res.status(404).json({ error: 'Order not found' });
 
-  const { imageUrl } = req.body || {};
+  const requestBaseUrl = `${req.protocol}://${req.get('host')}`;
+  const publicBaseUrl = (process.env.PUBLIC_API_URL || requestBaseUrl).replace(/\/$/, '');
+  if (false && /^https?:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/i.test(publicBaseUrl)) {
+    return res.status(422).json({ error: '3D preview needs a public backend URL. Set PUBLIC_API_URL in server/.env when deploying.' });
+  }
+  let imageUrl = `${publicBaseUrl}${record.images[0]}`;
   if (!imageUrl) return res.status(400).json({ error: 'imageUrl is required — pass a publicly accessible URL or base64 data URI' });
 
+  const filename = path.basename(record.images[0]);
+  const extension = path.extname(filename).toLowerCase();
+  const mimeType = IMAGE_MIME_TYPES[extension];
+  if (!mimeType) return res.status(400).json({ error: 'Meshy 3D previews support PNG and JPG images only.' });
+
   try {
+    const image = await readFile(path.join(UPLOAD_DIR, filename));
+    imageUrl = `data:${mimeType};base64,${image.toString('base64')}`;
     const meshyRes = await fetch('https://api.meshy.ai/openapi/v1/image-to-3d', {
       method: 'POST',
       headers: {
@@ -103,6 +121,37 @@ router.get('/generate-3d/:taskId', async (req, res) => {
     res.status(meshyRes.status).json(data);
   } catch (err) {
     res.status(500).json({ error: 'Could not reach Meshy API' });
+  }
+});
+
+/**
+ * GET /api/custom-orders/generate-3d/:taskId/model
+ * Proxies the GLB from Meshy. The asset host does not allow browser CORS requests,
+ * so model-viewer must load it through this same-origin endpoint instead.
+ */
+router.get('/generate-3d/:taskId/model', async (req, res) => {
+  if (!process.env.MESHY_API_KEY) {
+    return res.status(501).json({ error: 'MESHY_API_KEY is not set yet' });
+  }
+
+  try {
+    const taskRes = await fetch(`https://api.meshy.ai/openapi/v1/image-to-3d/${req.params.taskId}`, {
+      headers: { Authorization: `Bearer ${process.env.MESHY_API_KEY}` },
+    });
+    const task = await taskRes.json();
+    if (!taskRes.ok) return res.status(taskRes.status).json(task);
+    if (!task.model_urls?.glb) return res.status(409).json({ error: 'The GLB model is not ready yet' });
+
+    const modelRes = await fetch(task.model_urls.glb);
+    if (!modelRes.ok) return res.status(502).json({ error: 'Could not download the generated GLB model' });
+
+    res.set({
+      'Content-Type': 'model/gltf-binary',
+      'Cache-Control': 'private, max-age=300',
+    });
+    res.send(Buffer.from(await modelRes.arrayBuffer()));
+  } catch {
+    res.status(502).json({ error: 'Could not retrieve the generated GLB model' });
   }
 });
 

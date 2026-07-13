@@ -33,7 +33,8 @@ app.use('/api/custom-orders', customOrdersRouter);
 
 app.use((err, req, res, next) => {
   console.error(err);
-  res.status(err.status || 500).json({ error: err.message || 'Server error' });
+  const isUploadError = err.name === 'MulterError' || /Only PNG, JPG, or WEBP images are allowed/.test(err.message);
+  res.status(err.status || (isUploadError ? 400 : 500)).json({ error: err.message || 'Server error' });
 });
 
 const PORT = process.env.PORT || 5000;
