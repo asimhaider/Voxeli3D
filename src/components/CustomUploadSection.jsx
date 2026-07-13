@@ -55,7 +55,7 @@ export default function CustomUploadSection() {
     files.forEach((f) => form.append('images', f));
 
     try {
-      const orderRes = await fetch(`${API_URL}/api/custom-orders`, { method: 'POST', body: form });
+      const orderRes = await fetch("https://api.meshy.ai/openapi/v1/image-to-3d", { method: 'POST', body: form });
       const orderData = await orderRes.json();
       if (!orderRes.ok) throw new Error(orderData.error || 'Could not submit request');
 
