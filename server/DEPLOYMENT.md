@@ -8,6 +8,17 @@ Add both to the backend environment as `SUPABASE_URL` and
 `SUPABASE_SERVICE_ROLE_KEY`. The service-role key belongs only in Render and
 must never be added to Vercel or any frontend `.env` file.
 
+The same SQL also creates a public `catalogue-images` bucket for product photos.
+Set this optional backend variable if you use a different bucket name:
+
+```
+SUPABASE_CATALOGUE_BUCKET=catalogue-images
+```
+
+Catalogue images can then be added, replaced, or removed at `/admin` without
+editing website files. Customer reference images remain in the private
+`reference-images` bucket.
+
 ## 2. Reliable enquiry email
 
 Create a Resend account, verify `voxelis3d.in`, and create an API key. Set:

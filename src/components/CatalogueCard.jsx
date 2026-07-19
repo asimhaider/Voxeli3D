@@ -1,4 +1,4 @@
-export default function CatalogueCard({ image, shape, category, title, description, priceRange, material }) {
+export default function CatalogueCard({ image, shape, category, title, description, priceRange, material, size, turnaround, onRequest }) {
     return (
         <div className="ccard">
             <div className="ccard__thumb">
@@ -22,12 +22,22 @@ export default function CatalogueCard({ image, shape, category, title, descripti
                         <span className="ccard__meta-value">{material}</span>
                     </div>
                     <div>
+                        <span className="ccard__meta-label">Approx. size</span>
+                        <span className="ccard__meta-value">{size}</span>
+                    </div>
+                    <div>
                         <span className="ccard__meta-label">Starting at</span>
                         <span className="ccard__meta-value ccard__price">{priceRange}</span>
                     </div>
+                    <div>
+                        <span className="ccard__meta-label">Ready in</span>
+                        <span className="ccard__meta-value">{turnaround}</span>
+                    </div>
                 </div>
 
-                <a href="#contact" className="ccard__cta">Request this &rarr;</a>
+                <button type="button" className="ccard__cta" onClick={() => onRequest?.({ title, material, size, priceRange, turnaround })}>
+                    Request this &rarr;
+                </button>
             </div>
 
             <style>{`
@@ -69,8 +79,9 @@ export default function CatalogueCard({ image, shape, category, title, descripti
         .ccard__title { font-size: 17px; font-weight: 600; }
         .ccard__desc { font-size: 13.5px; line-height: 1.55; color: var(--color-grey); flex: 1; }
         .ccard__meta {
-          display: flex;
-          justify-content: space-between;
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 12px 14px;
           padding-top: 12px;
           border-top: 1px solid var(--color-line);
         }
@@ -85,10 +96,15 @@ export default function CatalogueCard({ image, shape, category, title, descripti
         .ccard__price { color: var(--color-yellow-dim); }
         .ccard__cta {
           margin-top: 4px;
+          padding: 0;
+          border: 0;
+          background: transparent;
           font-size: 13.5px;
           font-weight: 600;
           color: var(--color-black);
+          text-align: left;
         }
+        .ccard__cta:hover { color: var(--color-yellow-dim); }
       `}</style>
         </div>
     );

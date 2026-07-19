@@ -1,17 +1,20 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import CatalogueCard from './CatalogueCard';
+import { API_URL } from '../config';
 
 /**
  * Edit this array to add, remove, or update catalogue items.
  * Each item can use a product photo or an SVG fallback shape.
  */
-const CATALOGUE = [
+const DEFAULT_CATALOGUE = [
     {
         category: 'Trending',
         title: 'Spidey and Dino',
         description: 'Expertly crafted articulated spider and dinosaur skeleton prints that combine precision, creativity, and durability.',
         material: 'PLA (multi-color)',
+        size: '12–18 cm',
         priceRange: '₹299',
+        turnaround: '2–3 days',
         image: '/images/spider.jpeg',
     },
     // {
@@ -27,7 +30,9 @@ const CATALOGUE = [
         title: 'Incense Stick Holder - Warrior Edition',
         description: 'An intricately crafted warrior incense holder that adds a bold, artistic touch to your space while elegantly catching ash.',
         material: 'PLA+',
+        size: '16 cm',
         priceRange: '₹249',
+        turnaround: '2–3 days',
         image: '/images/warrior-incence-holder.png'
     },
     {
@@ -35,7 +40,9 @@ const CATALOGUE = [
         title: 'Incense Stick Holder - Samurai Edition',
         description: 'An elegantly designed samurai incense holder that blends traditional craftsmanship with modern décor, perfect for creating a calm and stylish atmosphere.',
         material: 'PLA+',
+        size: '14 cm',
         priceRange: '₹199',
+        turnaround: '2–3 days',
         image: '/images/samurai-incence-stick.png'
     },
     {
@@ -43,7 +50,9 @@ const CATALOGUE = [
         title: 'Wardrobe Hanger',
         description: 'A durable and space-saving wardrobe hanger designed to keep your clothes organized, wrinkle-free, and easily accessible.',
         material: 'PLA+',
+        size: '20 cm',
         priceRange: '₹99',
+        turnaround: '1–2 days',
         image: '/images/wardrobe-hanger.png'
     },
     {
@@ -51,7 +60,9 @@ const CATALOGUE = [
         title: 'Incense Stick Holder - Moai Edition',
         description: 'A uniquely crafted Moai-inspired incense holder that brings a minimalist, artistic charm while neatly catching incense ash.',
         material: 'PLA+',
+        size: '13 cm',
         priceRange: '₹199',
+        turnaround: '2–3 days',
         image: '/images/maoi-incence-holder.png'
     },
     {
@@ -59,7 +70,9 @@ const CATALOGUE = [
         title: 'Leaf Bowl',
         description: 'A beautifully crafted leaf-shaped bowl that combines natural elegance with everyday functionality, perfect for décor, jewelry, or small essentials.',
         material: 'PLA+',
+        size: '18 cm',
         priceRange: '₹249',
+        turnaround: '2–3 days',
         image: '/images/leaf-bowl.png'
     },
     {
@@ -67,7 +80,9 @@ const CATALOGUE = [
         title: 'Bowl - Coins and Keys',
         description: 'A stylish and practical catch-all bowl designed to keep your coins, keys, and everyday essentials neatly organized in one place.',
         material: 'PLA+',
+        size: '14 cm',
         priceRange: '₹199',
+        turnaround: '2–3 days',
         image: '/images/coin-keys-bowl.png'
     },
     {
@@ -75,7 +90,9 @@ const CATALOGUE = [
         title: 'Remote Organiser',
         description: 'A sleek and practical remote organiser designed to keep your TV remotes, gadgets, and everyday essentials neatly arranged and within easy reach.',
         material: 'PLA+',
+        size: '22 cm',
         priceRange: '₹349',
+        turnaround: '2–3 days',
         image: '/images/remote-organiser.png'
     },
     {
@@ -83,20 +100,49 @@ const CATALOGUE = [
         title: 'Spoon-Fork-Glasses Organiser',
         description: 'A versatile organizer designed to neatly store spoons, forks, glasses, and other kitchen essentials while keeping your countertop clutter-free.',
         material: 'PLA+',
+        size: '18 cm',
         priceRange: '₹249',
+        turnaround: '2–3 days',
         image: '/images/spoon-fork-organiser.png'
     },
 ];
 
-const CATEGORIES = [...new Set(CATALOGUE.map((item) => item.category))];
+export default function CatalogueSection({ onRequestProduct }) {
+    const [catalogue, setCatalogue] = useState(DEFAULT_CATALOGUE);
+    const [activeCategory, setActiveCategory] = useState(DEFAULT_CATALOGUE[0].category);
+    const categories = useMemo(() => [...new Set(catalogue.map((item) => item.category))], [catalogue]);
 
-export default function CatalogueSection() {
-    const [activeCategory, setActiveCategory] = useState(CATEGORIES[0]);
+    useEffect(() => {
+        let ignore = false;
+        fetch(`${API_URL}/api/catalogue`)
+            .then(async (response) => {
+                if (!response.ok) throw new Error('Catalogue could not be loaded');
+                return response.json();
+            })
+            .then((items) => {
+                if (!ignore && Array.isArray(items)) setCatalogue(items);
+            })
+            .catch(() => {
+                // Keep the built-in catalogue visible while Supabase is being configured.
+            });
+        return () => { ignore = true; };
+    }, []);
+
+    useEffect(() => {
+        if (categories.length > 0 && !categories.includes(activeCategory)) {
+            setActiveCategory(categories[0]);
+        }
+    }, [activeCategory, categories]);
 
     const filtered = useMemo(
-        () => CATALOGUE.filter((item) => item.category === activeCategory),
-        [activeCategory]
+        () => catalogue.filter((item) => item.category === activeCategory),
+        [activeCategory, catalogue]
     );
+
+    const handleRequest = (product) => {
+        onRequestProduct?.(product);
+        document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
 
     return (
         <section id="catalogue" className="catalogue">
@@ -105,12 +151,12 @@ export default function CatalogueSection() {
                     <div>
                         <p className="eyebrow">Our catalogue</p>
                         <h2 className="catalogue__title">Popular prints, ready to customize</h2>
-                        <p className="catalogue__sub">Starting prices shown — every piece can be resized, recolored, or modified. Don't see what you want? Upload a photo and we'll model it from scratch.</p>
+                        <p className="catalogue__sub">Starting prices, approximate sizes, material, and typical turnaround are shown. Every piece can be resized, recolored, or modified.</p>
                     </div>
                 </div>
 
                 <div className="catalogue__tabs" role="tablist">
-                    {CATEGORIES.map((cat) => (
+                    {categories.map((cat) => (
                         <button
                             key={cat}
                             role="tab"
@@ -125,8 +171,9 @@ export default function CatalogueSection() {
 
                 <div className="catalogue__grid">
                     {filtered.map((item) => (
-                        <CatalogueCard key={item.title} {...item} />
+                        <CatalogueCard key={item.id || item.title} {...item} image={item.imageUrl || item.image} priceRange={item.price || item.priceRange} onRequest={handleRequest} />
                     ))}
+                    {filtered.length === 0 && <p className="catalogue__empty">New catalogue products are being added. Contact us for a custom print.</p>}
                 </div>
             </div>
 
@@ -171,6 +218,7 @@ export default function CatalogueSection() {
           grid-template-columns: repeat(4, 1fr);
           gap: 20px;
         }
+        .catalogue__empty { grid-column: 1 / -1; color: var(--color-grey); font-size: 14px; }
         @media (max-width: 1000px) {
           .catalogue__grid { grid-template-columns: repeat(2, 1fr); }
         }

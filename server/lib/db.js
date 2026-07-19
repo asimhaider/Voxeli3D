@@ -1,6 +1,7 @@
 const TABLES = {
   quotes: 'quotes',
   'custom-orders': 'custom_orders',
+  'catalogue-items': 'catalogue_items',
 };
 
 function getConfig() {
@@ -48,6 +49,23 @@ function toRow(name, record) {
       email_notification: record.emailNotification,
     };
   }
+  if (name === 'catalogue-items') {
+    return {
+      id: record.id,
+      title: record.title,
+      category: record.category,
+      description: record.description,
+      material: record.material,
+      size: record.size,
+      price: record.price,
+      turnaround: record.turnaround,
+      image_path: record.imagePath,
+      is_available: record.isAvailable,
+      display_order: record.displayOrder,
+      created_at: record.createdAt,
+      updated_at: record.updatedAt,
+    };
+  }
   return {
     id: record.id,
     email: record.email,
@@ -72,6 +90,24 @@ function toRecord(name, row) {
       emailNotification: row.email_notification,
     };
   }
+  if (name === 'catalogue-items') {
+    return {
+      id: row.id,
+      type: 'catalogue-item',
+      title: row.title,
+      category: row.category,
+      description: row.description,
+      material: row.material,
+      size: row.size,
+      price: row.price,
+      turnaround: row.turnaround,
+      imagePath: row.image_path,
+      isAvailable: row.is_available,
+      displayOrder: row.display_order,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
+  }
   return {
     id: row.id,
     type: 'custom-order',
@@ -86,7 +122,8 @@ function toRecord(name, row) {
 }
 
 export async function readAll(name) {
-  const rows = await request(`/rest/v1/${tableFor(name)}?select=*&order=created_at.asc`);
+  const order = name === 'catalogue-items' ? 'display_order.asc,created_at.asc' : 'created_at.asc';
+  const rows = await request(`/rest/v1/${tableFor(name)}?select=*&order=${order}`);
   return rows.map((row) => toRecord(name, row));
 }
 
@@ -109,4 +146,12 @@ export async function updateById(name, id, patch) {
     body: JSON.stringify(toRow(name, updated)),
   });
   return toRecord(name, rows[0]);
+}
+
+export async function deleteById(name, id) {
+  const rows = await request(`/rest/v1/${tableFor(name)}?id=eq.${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: { Prefer: 'return=representation' },
+  });
+  return rows[0] ? toRecord(name, rows[0]) : null;
 }

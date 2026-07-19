@@ -4,35 +4,39 @@ import { API_URL } from '../config';
 import AdminLogin from './AdminLogin';
 import QuotesTab from './QuotesTab';
 import OrdersTab from './OrdersTab';
+import CatalogueAdminTab from './CatalogueAdminTab';
 
 export default function AdminPanel() {
   const [authenticated, setAuthenticated] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
   const [loginError, setLoginError] = useState(null);
-  const [tab, setTab] = useState('orders');
+  const [tab, setTab] = useState('catalogue');
   const [quotes, setQuotes] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [catalogue, setCatalogue] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
     setLoginError(null);
     try {
-      const [quotesRes, ordersRes] = await Promise.all([
+      const [quotesRes, ordersRes, catalogueRes] = await Promise.all([
         fetch(`${API_URL}/api/quotes`, { credentials: 'include' }),
         fetch(`${API_URL}/api/custom-orders`, { credentials: 'include' }),
+        fetch(`${API_URL}/api/catalogue/manage`, { credentials: 'include' }),
       ]);
-      if (quotesRes.status === 401 || ordersRes.status === 401) {
+      if (quotesRes.status === 401 || ordersRes.status === 401 || catalogueRes.status === 401) {
         setAuthenticated(false);
         return;
       }
-      if (!quotesRes.ok || !ordersRes.ok) {
-        const badRes = !quotesRes.ok ? quotesRes : ordersRes;
+      if (!quotesRes.ok || !ordersRes.ok || !catalogueRes.ok) {
+        const badRes = !quotesRes.ok ? quotesRes : !ordersRes.ok ? ordersRes : catalogueRes;
         const body = await badRes.json().catch(() => ({}));
         throw new Error(body.error || `Backend returned ${badRes.status}`);
       }
       setQuotes(await quotesRes.json());
       setOrders(await ordersRes.json());
+      setCatalogue(await catalogueRes.json());
     } catch (err) {
       setLoginError(err.message || 'Could not reach the backend');
     } finally {
@@ -57,6 +61,7 @@ export default function AdminPanel() {
     setAuthenticated(false);
     setQuotes([]);
     setOrders([]);
+    setCatalogue([]);
   };
 
   if (checkingSession) return null;
@@ -67,11 +72,16 @@ export default function AdminPanel() {
       <header className="admin-panel__header"><h1>Voxelis Admin</h1><button className="btn btn--outline" onClick={logout}>Log out</button></header>
       {loginError && <p className="admin-panel__error">{loginError}</p>}
       <div className="admin-panel__tabs">
+        <button className={tab === 'catalogue' ? 'active' : ''} onClick={() => setTab('catalogue')}>Catalogue ({catalogue.length})</button>
         <button className={tab === 'orders' ? 'active' : ''} onClick={() => setTab('orders')}>Custom orders ({orders.length})</button>
         <button className={tab === 'quotes' ? 'active' : ''} onClick={() => setTab('quotes')}>Quote requests ({quotes.length})</button>
         <button className="admin-panel__refresh" onClick={loadData} disabled={loading}>{loading ? 'Refreshing…' : 'Refresh'}</button>
       </div>
-      <main className="admin-panel__content">{tab === 'orders' ? <OrdersTab orders={orders} /> : <QuotesTab quotes={quotes} />}</main>
+      <main className="admin-panel__content">
+        {tab === 'catalogue' && <CatalogueAdminTab items={catalogue} onRefresh={loadData} />}
+        {tab === 'orders' && <OrdersTab orders={orders} />}
+        {tab === 'quotes' && <QuotesTab quotes={quotes} />}
+      </main>
       <style>{`
         .admin-panel { min-height: 100vh; background: var(--color-white); padding: 32px clamp(20px, 4vw, 48px) 80px; }
         .admin-panel__header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }

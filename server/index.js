@@ -4,6 +4,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 
 import adminRouter from './routes/admin.js';
+import catalogueRouter from './routes/catalogue.js';
 import quotesRouter from './routes/quotes.js';
 import customOrdersRouter from './routes/custom-orders.js';
 
@@ -40,6 +41,7 @@ app.get('/api/health', (req, res) => {
 });
 
 app.use('/api/admin', adminRouter);
+app.use('/api/catalogue', catalogueRouter);
 app.use('/api/quotes', quotesRouter);
 app.use('/api/custom-orders', customOrdersRouter);
 // app.use('/api/convert-3d', convert3dRouter);

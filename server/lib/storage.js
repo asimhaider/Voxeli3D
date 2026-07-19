@@ -10,6 +10,11 @@ function getConfig() {
   return { url, key, bucket };
 }
 
+function getCatalogueConfig() {
+  const { url, key } = getConfig();
+  return { url, key, bucket: process.env.SUPABASE_CATALOGUE_BUCKET || 'catalogue-images' };
+}
+
 function headers(key) {
   return { apikey: key, Authorization: `Bearer ${key}` };
 }
@@ -44,4 +49,35 @@ export async function signedReferenceUrl(path, expiresIn = 3600) {
   if (!response.ok) throw new Error(`Could not create image URL: ${await response.text()}`);
   const { signedURL } = await response.json();
   return `${url}/storage/v1${signedURL}`;
+}
+
+export async function uploadCatalogueImage(file) {
+  const { url, key, bucket } = getCatalogueConfig();
+  const extension = file.mimetype === 'image/png' ? 'png' : 'jpg';
+  const path = `catalogue/${nanoid(14)}.${extension}`;
+  const response = await fetch(`${url}/storage/v1/object/${bucket}/${path}`, {
+    method: 'POST',
+    headers: { ...headers(key), 'Content-Type': file.mimetype, 'x-upsert': 'false' },
+    body: file.buffer,
+  });
+  if (!response.ok) throw new Error(`Could not upload catalogue image: ${await response.text()}`);
+  return path;
+}
+
+export function catalogueImageUrl(path) {
+  if (!path || path.startsWith('/') || /^https?:\/\//i.test(path)) return path || null;
+  const { url, bucket } = getCatalogueConfig();
+  return `${url}/storage/v1/object/public/${bucket}/${path}`;
+}
+
+export async function deleteCatalogueImage(path) {
+  if (!path || path.startsWith('/') || /^https?:\/\//i.test(path)) return;
+  const { url, key, bucket } = getCatalogueConfig();
+  const response = await fetch(`${url}/storage/v1/object/${bucket}/${path}`, {
+    method: 'DELETE',
+    headers: headers(key),
+  });
+  if (!response.ok && response.status !== 404) {
+    throw new Error(`Could not remove catalogue image: ${await response.text()}`);
+  }
 }

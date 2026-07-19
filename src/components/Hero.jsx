@@ -1,7 +1,7 @@
 import PrintIllustration from './icons/PrintIllustration';
 
 /** Change these three lines to update the headline — each renders as one "printed layer". */
-const HEADLINE_LINES = ['We print', 'ideas into', 'objects.'];
+const HEADLINE_LINES = ['3D prints for', 'products, parts', 'and prototypes.'];
 
 export default function Hero() {
   return (
@@ -23,9 +23,9 @@ export default function Hero() {
           </h1>
 
           <p className="hero__sub">
-            From STEM models to industrial spare parts, Voxelis designs and
-            additive-manufactures precision components — one layer, one
-            micron at a time.
+            For makers, homes, schools, and businesses. From a single custom
+            idea to production-ready parts, we quote within 24 hours and most
+            standard prints are ready in 2–5 days.
           </p>
 
           <div className="hero__actions">
@@ -34,10 +34,14 @@ export default function Hero() {
           </div>
 
           <div className="hero__specs">
-            <div><span>0.1mm</span>layer resolution</div>
-            <div><span>24hr</span>quote turnaround</div>
-            <div><span>4</span>manufacturing verticals</div>
+            <div><span>What</span>Products, parts & models</div>
+            <div><span>Who</span>Individuals & businesses</div>
+            <div><span>How fast</span>Quotes in 24 hours</div>
           </div>
+
+          <p className="hero__service-note">
+            <strong>Lucknow-based.</strong> Local pickup and delivery available; shipping can be arranged across India.
+          </p>
         </div>
 
         <div className="hero__art">
@@ -109,6 +113,14 @@ export default function Hero() {
           color: var(--color-black);
           margin-bottom: 2px;
         }
+        .hero__service-note {
+          margin-top: 18px;
+          max-width: 520px;
+          font-size: 13px;
+          line-height: 1.5;
+          color: var(--color-grey);
+        }
+        .hero__service-note strong { color: var(--color-black); }
         .hero__art {
           background: var(--color-cream);
           border-radius: var(--radius-md);

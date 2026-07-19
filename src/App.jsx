@@ -1,4 +1,5 @@
 import './index.css';
+import { useState } from 'react';
 import Header from './components/Header';
 import Hero from './components/Hero';
 import LayerRail from './components/LayerRail';
@@ -11,20 +12,24 @@ import GallerySection from './components/GallerySection';
 import CTASection from './components/CTASection';
 import Footer from './components/Footer';
 import WhatsAppButton from './components/WhatsAppButton';
+import ContactStrip from './components/ContactStrip';
 
 export default function App() {
+  const [selectedProduct, setSelectedProduct] = useState(null);
+
   return (
     <>
       <LayerRail />
       <Header />
       <Hero />
+      <ContactStrip />
       <StatsSection />
       <VerticalsSection />
-      <CatalogueSection />
+      <CatalogueSection onRequestProduct={setSelectedProduct} />
       <ProcessSection />
       <CustomUploadSection />
       <GallerySection />
-      <CTASection />
+      <CTASection selectedProduct={selectedProduct} onProductCleared={() => setSelectedProduct(null)} />
       <Footer />
       <WhatsAppButton />
     </>
