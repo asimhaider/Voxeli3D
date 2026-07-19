@@ -4,6 +4,7 @@ import LogoMark from './icons/LogoMark';
 /** Edit NAV_LINKS to add, remove, or rename navigation items. */
 const NAV_LINKS = [
   { label: 'Capabilities', href: '#verticals' },
+  { label: 'Catalogue', href: '#catalogue' },
   { label: 'Process', href: '#process' },
   { label: 'Custom order', href: '#custom-upload' },
   { label: 'Work', href: '#gallery' },

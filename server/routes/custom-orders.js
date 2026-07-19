@@ -3,15 +3,23 @@ import { readFile } from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { nanoid } from 'nanoid';
+import { randomBytes } from 'crypto';
 import { append, readAll, updateById } from '../lib/db.js';
 import { notify } from '../lib/mailer.js';
 import { upload } from '../middleware/upload.js';
-import { requireAdmin } from '../middleware/admin.js';
+import { isAdminRequest, requireAdmin } from '../middleware/adminAuth.js';
 
 const router = Router();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const UPLOAD_DIR = path.join(__dirname, '..', 'uploads');
 const IMAGE_MIME_TYPES = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png' };
+
+function hasPreviewAccess(req, record, { allowQueryToken = false } = {}) {
+  const previewToken = req.header('x-preview-token')
+    || (allowQueryToken ? req.query.previewToken : undefined);
+  return isAdminRequest(req, { allowQueryPassword: allowQueryToken })
+    || Boolean(record.previewToken && previewToken === record.previewToken);
+}
 
 /**
  * POST /api/custom-orders
@@ -32,6 +40,7 @@ router.post('/', upload.array('images', 5), async (req, res) => {
     images: req.files.map((f) => `/uploads/${f.filename}`),
     createdAt: new Date().toISOString(),
     meshyTaskId: null,
+    previewToken: randomBytes(24).toString('base64url'),
   };
   await append('custom-orders', record);
 
@@ -40,7 +49,7 @@ router.post('/', upload.array('images', 5), async (req, res) => {
     text: `Email: ${email}\nNotes: ${notes || '(none)'}\nImages: ${record.images.join(', ')}`,
   });
 
-  res.status(201).json({ ok: true, id: record.id, images: record.images });
+  res.status(201).json({ ok: true, id: record.id, images: record.images, previewToken: record.previewToken });
 });
 
 /** GET /api/custom-orders — listing for you to review submissions. */
@@ -62,6 +71,11 @@ router.post('/:id/generate-3d', async (req, res) => {
   const records = await readAll('custom-orders');
   const record = records.find((r) => r.id === req.params.id);
   if (!record) return res.status(404).json({ error: 'Order not found' });
+  if (!hasPreviewAccess(req, record)) return res.status(401).json({ error: 'Unauthorized' });
+  if (!record.previewToken) {
+    record.previewToken = randomBytes(24).toString('base64url');
+    await updateById('custom-orders', record.id, { previewToken: record.previewToken });
+  }
 
   let imageUrl;
 
@@ -92,7 +106,7 @@ router.post('/:id/generate-3d', async (req, res) => {
     if (!meshyRes.ok) return res.status(meshyRes.status).json(data);
 
     await updateById('custom-orders', record.id, { meshyTaskId: data.result });
-    res.status(200).json(data); // { result: "<taskId>" }
+    res.status(200).json({ ...data, previewToken: record.previewToken });
   } catch (err) {
     res.status(500).json({ error: 'Could not reach Meshy API' });
   }
@@ -106,6 +120,10 @@ router.get('/generate-3d/:taskId', async (req, res) => {
   if (!process.env.MESHY_API_KEY) {
     return res.status(501).json({ error: 'MESHY_API_KEY is not set yet — add it to server/.env to enable 3D preview generation' });
   }
+
+  const records = await readAll('custom-orders');
+  const record = records.find((item) => item.meshyTaskId === req.params.taskId);
+  if (!record || !hasPreviewAccess(req, record)) return res.status(401).json({ error: 'Unauthorized' });
 
   try {
     const meshyRes = await fetch(`https://api.meshy.ai/openapi/v1/image-to-3d/${req.params.taskId}`, {
@@ -126,6 +144,12 @@ router.get('/generate-3d/:taskId', async (req, res) => {
 router.get('/generate-3d/:taskId/model', async (req, res) => {
   if (!process.env.MESHY_API_KEY) {
     return res.status(501).json({ error: 'MESHY_API_KEY is not set yet' });
+  }
+
+  const records = await readAll('custom-orders');
+  const record = records.find((item) => item.meshyTaskId === req.params.taskId);
+  if (!record || !hasPreviewAccess(req, record, { allowQueryToken: true })) {
+    return res.status(401).json({ error: 'Unauthorized' });
   }
 
   try {

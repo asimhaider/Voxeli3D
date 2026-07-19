@@ -71,23 +71,25 @@ export default function CustomUploadSection() {
 
       const genRes = await fetch(`${API_URL}/api/custom-orders/${orderData.id}/generate-3d`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-preview-token': orderData.previewToken },
         body: JSON.stringify({}),
       });
       const genData = await genRes.json();
       if (!genRes.ok) throw new Error(genData.error || '3D preview is not available yet');
 
-      pollStatus(genData.result);
+      pollStatus(genData.result, orderData.previewToken);
     } catch (err) {
       setPreviewError(err.message || 'Something went wrong starting the 3D preview');
     }
   };
 
-  const pollStatus = (taskId) => {
+  const pollStatus = (taskId, previewToken) => {
     clearInterval(pollRef.current);
     pollRef.current = setInterval(async () => {
       try {
-        const res = await fetch(`${API_URL}/api/custom-orders/generate-3d/${taskId}`);
+        const res = await fetch(`${API_URL}/api/custom-orders/generate-3d/${taskId}`, {
+          headers: { 'x-preview-token': previewToken },
+        });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Status check failed');
 
@@ -96,7 +98,7 @@ export default function CustomUploadSection() {
           progress: data.progress ?? 0,
           taskId,
           modelUrl: data.model_urls?.glb
-            ? `${API_URL}/api/custom-orders/generate-3d/${taskId}/model`
+            ? `${API_URL}/api/custom-orders/generate-3d/${taskId}/model?previewToken=${encodeURIComponent(previewToken)}`
             : null,
         });
 

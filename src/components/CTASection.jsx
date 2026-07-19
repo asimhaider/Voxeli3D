@@ -14,11 +14,14 @@ export default function CTASection() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || 'Could not send your quote request');
+      }
       setStatus('done');
       e.target.reset();
-    } catch {
-      setStatus('error');
+    } catch (err) {
+      setStatus(err.message || 'Could not reach the quote service. Please try again.');
     }
   };
 
@@ -38,7 +41,9 @@ export default function CTASection() {
             </button>
           </form>
         )}
-        {status === 'error' && <p className="cta__error">Something went wrong — check that the backend is running and try again.</p>}
+        {status !== 'idle' && status !== 'sending' && status !== 'done' && (
+          <p className="cta__error">{status}</p>
+        )}
       </div>
 
       <style>{`

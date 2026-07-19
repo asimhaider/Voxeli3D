@@ -2,7 +2,8 @@ import { Router } from 'express';
 import { nanoid } from 'nanoid';
 import { append, readAll } from '../lib/db.js';
 import { notify } from '../lib/mailer.js';
-import { requireAdmin } from '../middleware/admin.js';
+// import { requireAdmin } from '../middleware/admin.js';
+import { requireAdmin } from '../middleware/adminAuth.js';
 
 const router = Router();
 
