@@ -15,7 +15,7 @@ export default function CTASection() {
       const res = await fetch(`${API_URL}/api/quotes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, whatsapp, message }),
+        body: JSON.stringify({ email, whatsapp, message, website: form.website.value }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -38,6 +38,7 @@ export default function CTASection() {
           <p className="cta__confirm">Thanks — we'll be in touch shortly.</p>
         ) : (
           <form className="cta__form" onSubmit={handleSubmit}>
+            <input className="form-honeypot" name="website" type="text" tabIndex="-1" autoComplete="off" aria-hidden="true" />
             <input name="email" type="email" required placeholder="you@company.com" aria-label="Email address" />
             <input name="whatsapp" type="tel" required placeholder="WhatsApp number" aria-label="WhatsApp number" />
             <textarea name="message" placeholder="Tell us about your enquiry (optional)" aria-label="Enquiry" rows={3} />
@@ -102,6 +103,7 @@ export default function CTASection() {
           outline: 2px solid var(--color-black);
           outline-offset: 2px;
         }
+        .form-honeypot { position: absolute !important; width: 1px !important; height: 1px !important; overflow: hidden !important; opacity: 0 !important; pointer-events: none !important; }
         .cta__confirm { margin-top: 28px; font-weight: 600; font-size: 15px; }
         .cta__error { margin-top: 16px; font-size: 13.5px; color: rgba(11,11,12,0.7); }
       `}</style>

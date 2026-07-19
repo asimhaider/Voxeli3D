@@ -3,7 +3,7 @@ import { API_URL } from '../config';
 
 const POLL_INTERVAL_MS = 4000;
 
-export default function OrdersTab({ orders, adminPassword }) {
+export default function OrdersTab({ orders }) {
   const safeOrders = Array.isArray(orders) ? orders : [];
   const [previews, setPreviews] = useState({}); // orderId -> { status, progress, modelUrl, error }
 
@@ -16,7 +16,7 @@ export default function OrdersTab({ orders, adminPassword }) {
     try {
       const res = await fetch(`${API_URL}/api/custom-orders/${order.id}/generate-3d`, {
         method: 'POST',
-        headers: { 'x-admin-password': adminPassword },
+        credentials: 'include',
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Could not start generation');
@@ -30,7 +30,7 @@ export default function OrdersTab({ orders, adminPassword }) {
     const interval = setInterval(async () => {
       try {
         const res = await fetch(`${API_URL}/api/custom-orders/generate-3d/${taskId}`, {
-          headers: { 'x-admin-password': adminPassword },
+          credentials: 'include',
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Status check failed');
@@ -68,8 +68,8 @@ export default function OrdersTab({ orders, adminPassword }) {
           return (
             <div key={order.id} className="order-card">
               <div className="order-card__images">
-                {order.images.map((imgPath) => (
-                  <img key={imgPath} src={`${API_URL}${imgPath}`} alt="Uploaded reference" />
+                {(order.imageUrls || []).map((imageUrl) => (
+                  <img key={imageUrl} src={imageUrl} alt="Uploaded reference" />
                 ))}
               </div>
 

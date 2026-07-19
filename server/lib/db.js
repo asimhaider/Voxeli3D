@@ -1,55 +1,112 @@
-import { readFile, writeFile, mkdir } from 'fs/promises';
-import { existsSync } from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+const TABLES = {
+  quotes: 'quotes',
+  'custom-orders': 'custom_orders',
+};
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = path.join(__dirname, '..', 'data');
-const locks = new Map();
+function getConfig() {
+  const url = process.env.SUPABASE_URL?.replace(/\/$/, '');
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) {
+    throw new Error('Supabase is not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.');
+  }
+  return { url, key };
+}
 
-/**
- * Minimal file-backed store. Good enough for getting started; swap for
- * Postgres/Mongo/SQLite later — only this file needs to change, since
- * routes just call read()/append().
- */
-async function ensureFile(name) {
-  if (!existsSync(DATA_DIR)) await mkdir(DATA_DIR, { recursive: true });
-  const filePath = path.join(DATA_DIR, `${name}.json`);
-  if (!existsSync(filePath)) await writeFile(filePath, '[]', 'utf-8');
-  return filePath;
+async function request(path, options = {}) {
+  const { url, key } = getConfig();
+  const response = await fetch(`${url}${path}`, {
+    ...options,
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+      ...options.headers,
+    },
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`Supabase request failed (${response.status}): ${body}`);
+  }
+  return response.status === 204 ? null : response.json();
+}
+
+function tableFor(name) {
+  const table = TABLES[name];
+  if (!table) throw new Error(`Unknown data collection: ${name}`);
+  return table;
+}
+
+function toRow(name, record) {
+  if (name === 'quotes') {
+    return {
+      id: record.id,
+      email: record.email,
+      whatsapp: record.whatsapp,
+      message: record.message,
+      created_at: record.createdAt,
+      email_notification: record.emailNotification,
+    };
+  }
+  return {
+    id: record.id,
+    email: record.email,
+    notes: record.notes,
+    image_paths: record.images,
+    created_at: record.createdAt,
+    meshy_task_id: record.meshyTaskId,
+    preview_token: record.previewToken,
+    email_notification: record.emailNotification,
+  };
+}
+
+function toRecord(name, row) {
+  if (name === 'quotes') {
+    return {
+      id: row.id,
+      type: 'quote',
+      email: row.email,
+      whatsapp: row.whatsapp,
+      message: row.message,
+      createdAt: row.created_at,
+      emailNotification: row.email_notification,
+    };
+  }
+  return {
+    id: row.id,
+    type: 'custom-order',
+    email: row.email,
+    notes: row.notes,
+    images: row.image_paths || [],
+    createdAt: row.created_at,
+    meshyTaskId: row.meshy_task_id,
+    previewToken: row.preview_token,
+    emailNotification: row.email_notification,
+  };
 }
 
 export async function readAll(name) {
-  const filePath = await ensureFile(name);
-  const raw = await readFile(filePath, 'utf-8');
-  return JSON.parse(raw);
+  const rows = await request(`/rest/v1/${tableFor(name)}?select=*&order=created_at.asc`);
+  return rows.map((row) => toRecord(name, row));
 }
 
 export async function append(name, record) {
-  return mutate(name, (records) => {
-    records.push(record);
-    return record;
+  const rows = await request(`/rest/v1/${tableFor(name)}`, {
+    method: 'POST',
+    headers: { Prefer: 'return=representation' },
+    body: JSON.stringify(toRow(name, record)),
   });
+  return toRecord(name, rows[0]);
 }
 
 export async function updateById(name, id, patch) {
-  return mutate(name, (records) => {
-    const idx = records.findIndex((record) => record.id === id);
-    if (idx === -1) return null;
-    records[idx] = { ...records[idx], ...patch };
-    return records[idx];
+  const current = (await request(`/rest/v1/${tableFor(name)}?id=eq.${encodeURIComponent(id)}&select=*`))[0];
+  if (!current) return null;
+  const updated = { ...toRecord(name, current), ...patch };
+  const rows = await request(`/rest/v1/${tableFor(name)}?id=eq.${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    headers: { Prefer: 'return=representation' },
+    body: JSON.stringify(toRow(name, updated)),
   });
-}
-
-function mutate(name, change) {
-  const previous = locks.get(name) || Promise.resolve();
-  const operation = previous.then(async () => {
-    const filePath = await ensureFile(name);
-    const records = JSON.parse(await readFile(filePath, 'utf-8'));
-    const result = change(records);
-    await writeFile(filePath, JSON.stringify(records, null, 2), 'utf-8');
-    return result;
-  });
-  locks.set(name, operation.catch(() => undefined));
-  return operation;
+  return toRecord(name, rows[0]);
 }

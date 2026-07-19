@@ -57,6 +57,7 @@ export default function CustomUploadSection() {
     const form = new FormData();
     form.append('email', email);
     form.append('notes', notes);
+    form.append('website', e.currentTarget.website.value);
     files.forEach((f) => form.append('images', f));
 
     try {
@@ -169,6 +170,7 @@ export default function CustomUploadSection() {
           </div>
         ) : (
           <form className="upload-section__form" onSubmit={handleSubmit}>
+            <input className="form-honeypot" name="website" type="text" tabIndex="-1" autoComplete="off" aria-hidden="true" />
             <div
               className={`upload-dropzone ${dragOver ? 'upload-dropzone--active' : ''}`}
               onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}

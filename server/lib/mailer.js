@@ -1,36 +1,32 @@
-import nodemailer from 'nodemailer';
-
-let transporter = null;
-
-function getTransporter() {
-  if (!process.env.SMTP_HOST) return null;
-  if (!transporter) {
-    const port = Number(process.env.SMTP_PORT) || 587;
-    transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port,
-      secure: process.env.SMTP_SECURE === 'true' || port === 465,
-      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-    });
+/** Send transactional email over HTTPS so it works on Render's Free tier. */
+export async function notify({ subject, text, replyTo, idempotencyKey }) {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.NOTIFY_EMAIL_FROM;
+  const to = process.env.NOTIFY_EMAIL_TO;
+  if (!apiKey || !from || !to) {
+    return { sent: false, error: 'Resend is not configured' };
   }
-  return transporter;
-}
 
-/** Sends a notification email if SMTP is configured; otherwise just logs and returns. */
-export async function notify({ subject, text }) {
-  const t = getTransporter();
-  if (!t || !process.env.NOTIFY_EMAIL_TO) {
-    console.log(`[email skipped — SMTP not configured] ${subject}`);
-    return { sent: false };
-  }
   try {
-    await t.sendMail({
-      from: process.env.NOTIFY_EMAIL_FROM || process.env.SMTP_USER,
-      to: process.env.NOTIFY_EMAIL_TO,
-      subject,
-      text,
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'User-Agent': 'voxelis-backend/1.0',
+        ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}),
+      },
+      body: JSON.stringify({
+        from,
+        to: [to],
+        subject,
+        text,
+        ...(replyTo ? { reply_to: replyTo } : {}),
+      }),
     });
-    return { sent: true };
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) return { sent: false, error: body.message || `Resend returned ${response.status}` };
+    return { sent: true, id: body.id };
   } catch (err) {
     console.error('Email notify failed:', err.message);
     return { sent: false, error: err.message };

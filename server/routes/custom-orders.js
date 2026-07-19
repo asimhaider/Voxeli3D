@@ -1,17 +1,15 @@
 import { Router } from 'express';
-import { readFile } from 'fs/promises';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { nanoid } from 'nanoid';
 import { randomBytes } from 'crypto';
 import { append, readAll, updateById } from '../lib/db.js';
 import { notify } from '../lib/mailer.js';
+import { downloadReference, signedReferenceUrl, uploadReference } from '../lib/storage.js';
 import { upload } from '../middleware/upload.js';
 import { isAdminRequest, requireAdmin } from '../middleware/adminAuth.js';
+import { rateLimit, rejectBot } from '../middleware/rateLimit.js';
 
 const router = Router();
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const UPLOAD_DIR = path.join(__dirname, '..', 'uploads');
 const IMAGE_MIME_TYPES = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png' };
 
 function hasPreviewAccess(req, record, { allowQueryToken = false } = {}) {
@@ -24,9 +22,9 @@ function hasPreviewAccess(req, record, { allowQueryToken = false } = {}) {
 /**
  * POST /api/custom-orders
  * multipart/form-data: images[] (up to 5), notes, email
- * Saves the request + stores images on disk under /uploads.
+ * Saves the request and stores images in a private Supabase Storage bucket.
  */
-router.post('/', upload.array('images', 5), async (req, res) => {
+router.post('/', rateLimit({ windowMs: 30 * 60 * 1000, max: 3, message: 'Too many custom orders. Please try again later.' }), upload.array('images', 5), rejectBot, async (req, res) => {
   const { email, notes } = req.body || {};
   if (!email) return res.status(400).json({ error: 'Email is required' });
   if (!req.files || req.files.length === 0) {
@@ -37,7 +35,7 @@ router.post('/', upload.array('images', 5), async (req, res) => {
     type: 'custom-order',
     email,
     notes: notes || '',
-    images: req.files.map((f) => `/uploads/${f.filename}`),
+    images: await Promise.all(req.files.map(uploadReference)),
     createdAt: new Date().toISOString(),
     meshyTaskId: null,
     previewToken: randomBytes(24).toString('base64url'),
@@ -51,13 +49,19 @@ router.post('/', upload.array('images', 5), async (req, res) => {
   void notify({
     subject: `New custom order — ${email}`,
     text: `Email: ${email}\nNotes: ${notes || '(none)'}\nImages: ${record.images.join(', ')}`,
+    replyTo: email,
+    idempotencyKey: `custom-order-${record.id}`,
   }).catch((err) => console.error('Custom-order notification failed:', err.message));
 });
 
 /** GET /api/custom-orders — listing for you to review submissions. */
 router.get('/', requireAdmin, async (req, res) => {
   const records = await readAll('custom-orders');
-  res.json(records);
+  const orders = await Promise.all(records.map(async (record) => ({
+    ...record,
+    imageUrls: await Promise.all(record.images.map((image) => signedReferenceUrl(image))),
+  })));
+  res.json(orders);
 });
 
 /**
@@ -87,7 +91,7 @@ router.post('/:id/generate-3d', async (req, res) => {
   if (!mimeType) return res.status(400).json({ error: 'Meshy 3D previews support PNG and JPG images only.' });
 
   try {
-    const image = await readFile(path.join(UPLOAD_DIR, filename));
+    const image = await downloadReference(record.images[0]);
     imageUrl = `data:${mimeType};base64,${image.toString('base64')}`;
     const meshyRes = await fetch('https://api.meshy.ai/openapi/v1/image-to-3d', {
       method: 'POST',

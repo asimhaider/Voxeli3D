@@ -27,7 +27,7 @@ export default function CatalogueCard({ image, shape, category, title, descripti
                     </div>
                 </div>
 
-                <a href="#custom-upload" className="ccard__cta">Request this &rarr;</a>
+                <a href="#contact" className="ccard__cta">Request this &rarr;</a>
             </div>
 
             <style>{`

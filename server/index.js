@@ -2,16 +2,15 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import path from 'path';
-import { fileURLToPath } from 'url';
 
+import adminRouter from './routes/admin.js';
 import quotesRouter from './routes/quotes.js';
 import customOrdersRouter from './routes/custom-orders.js';
 
 dotenv.config();
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
+app.set('trust proxy', 1);
 
 const configuredOrigins = (process.env.CORS_ORIGIN || '')
   .split(',')
@@ -20,6 +19,7 @@ const configuredOrigins = (process.env.CORS_ORIGIN || '')
 const isLocalDevOrigin = (origin) => /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin);
 
 app.use(cors({
+  credentials: true,
   origin(origin, callback) {
     if (!origin || isLocalDevOrigin(origin) || configuredOrigins.length === 0 || configuredOrigins.includes(origin)) {
       return callback(null, true);
@@ -29,17 +29,17 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '2mb' }));
 
-// Serve uploaded reference images back out so the frontend can preview/link them.
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
 app.get('/api/health', (req, res) => {
   res.json({
     ok: true,
     meshyConfigured: Boolean(process.env.MESHY_API_KEY),
+    storageConfigured: Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY),
+    emailConfigured: Boolean(process.env.RESEND_API_KEY),
     time: new Date().toISOString(),
   });
 });
 
+app.use('/api/admin', adminRouter);
 app.use('/api/quotes', quotesRouter);
 app.use('/api/custom-orders', customOrdersRouter);
 // app.use('/api/convert-3d', convert3dRouter);

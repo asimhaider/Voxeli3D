@@ -2,18 +2,18 @@ import { Router } from 'express';
 import { nanoid } from 'nanoid';
 import { append, readAll, updateById } from '../lib/db.js';
 import { notify } from '../lib/mailer.js';
-// import { requireAdmin } from '../middleware/admin.js';
 import { requireAdmin } from '../middleware/adminAuth.js';
+import { rateLimit, rejectBot } from '../middleware/rateLimit.js';
 
 const router = Router();
 
 /** POST /api/quotes — from the bottom CTA form (contact details and enquiry). */
-router.post('/', async (req, res) => {
+router.post('/', rateLimit({ windowMs: 15 * 60 * 1000, max: 5, message: 'Too many quote requests. Please try again later.' }), rejectBot, async (req, res) => {
   const { email, whatsapp, message } = req.body || {};
   const emailValue = String(email || '').trim();
-  const whatsappValue = String(whatsapp || '').trim();
-  if (!emailValue) return res.status(400).json({ error: 'Email is required' });
-  if (!whatsappValue) return res.status(400).json({ error: 'WhatsApp number is required' });
+  const whatsappValue = String(whatsapp || '').replace(/\D/g, '');
+  if (!/^\S+@\S+\.\S+$/.test(emailValue)) return res.status(400).json({ error: 'Enter a valid email address' });
+  if (whatsappValue.length < 7 || whatsappValue.length > 15) return res.status(400).json({ error: 'Enter a valid WhatsApp number' });
 
   const record = {
     id: nanoid(10),
@@ -33,12 +33,15 @@ router.post('/', async (req, res) => {
   void notify({
     subject: `New quote request — ${emailValue}`,
     text: `Email: ${emailValue}\nWhatsApp: ${whatsappValue}\n\nEnquiry: ${message || '(none)'}`,
+    replyTo: emailValue,
+    idempotencyKey: `quote-${record.id}`,
   })
     .then((result) => updateById('quotes', record.id, {
       emailNotification: {
         status: result.sent ? 'sent' : 'failed',
         updatedAt: new Date().toISOString(),
         error: result.error || null,
+        providerId: result.id || null,
       },
     }))
     .catch(async (err) => {
