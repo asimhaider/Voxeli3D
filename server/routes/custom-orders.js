@@ -44,12 +44,14 @@ router.post('/', upload.array('images', 5), async (req, res) => {
   };
   await append('custom-orders', record);
 
-  await notify({
+  res.status(201).json({ ok: true, id: record.id, images: record.images, previewToken: record.previewToken });
+
+  // The order is safely stored before notifying. Keep a slow SMTP server from
+  // delaying the customer's confirmation.
+  void notify({
     subject: `New custom order — ${email}`,
     text: `Email: ${email}\nNotes: ${notes || '(none)'}\nImages: ${record.images.join(', ')}`,
-  });
-
-  res.status(201).json({ ok: true, id: record.id, images: record.images, previewToken: record.previewToken });
+  }).catch((err) => console.error('Custom-order notification failed:', err.message));
 });
 
 /** GET /api/custom-orders — listing for you to review submissions. */

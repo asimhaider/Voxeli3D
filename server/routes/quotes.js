@@ -25,12 +25,14 @@ router.post('/', async (req, res) => {
   };
   await append('quotes', record);
 
-  await notify({
+  res.status(201).json({ ok: true, id: record.id });
+
+  // Do not make the visitor wait for an external mail server. The enquiry is
+  // already stored, and delivery failures are logged for follow-up.
+  void notify({
     subject: `New quote request — ${emailValue}`,
     text: `Email: ${emailValue}\nWhatsApp: ${whatsappValue}\n\nEnquiry: ${message || '(none)'}`,
-  });
-
-  res.status(201).json({ ok: true, id: record.id });
+  }).catch((err) => console.error('Quote notification failed:', err.message));
 });
 
 /** GET /api/quotes — simple listing for you to check submissions (add auth before going live). */
