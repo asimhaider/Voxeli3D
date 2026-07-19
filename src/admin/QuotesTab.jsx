@@ -9,7 +9,8 @@ export default function QuotesTab({ quotes }) {
     <div className="admin-table">
       <div className="admin-table__row admin-table__row--head">
         <span>Email</span>
-        <span>Message</span>
+        <span>WhatsApp</span>
+        <span>Enquiry</span>
         <span>Received</span>
       </div>
       {safeQuotes
@@ -18,6 +19,7 @@ export default function QuotesTab({ quotes }) {
         .map((q) => (
           <div key={q.id} className="admin-table__row">
             <span><a href={`mailto:${q.email}`}>{q.email}</a></span>
+            <span>{q.whatsapp ? <a href={`https://wa.me/${q.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer">{q.whatsapp}</a> : <em>(not provided)</em>}</span>
             <span>{q.message || <em>(no message)</em>}</span>
             <span>{new Date(q.createdAt).toLocaleString()}</span>
           </div>
@@ -28,7 +30,7 @@ export default function QuotesTab({ quotes }) {
         .admin-table { display: flex; flex-direction: column; border: 1px solid var(--color-line); border-radius: var(--radius-md); overflow: hidden; }
         .admin-table__row {
           display: grid;
-          grid-template-columns: 1fr 1.6fr 1fr;
+          grid-template-columns: 1.2fr 1fr 1.6fr 1fr;
           gap: 16px;
           padding: 14px 18px;
           font-size: 13.5px;

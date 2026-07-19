@@ -6,20 +6,23 @@ export default function CTASection() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const email = e.target.email.value;
+    const form = e.currentTarget;
+    const email = form.email.value.trim();
+    const whatsapp = form.whatsapp.value.trim();
+    const message = form.message.value.trim();
     setStatus('sending');
     try {
       const res = await fetch(`${API_URL}/api/quotes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, whatsapp, message }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error || 'Could not send your quote request');
       }
       setStatus('done');
-      e.target.reset();
+      form.reset();
     } catch (err) {
       setStatus(err.message || 'Could not reach the quote service. Please try again.');
     }
@@ -36,6 +39,8 @@ export default function CTASection() {
         ) : (
           <form className="cta__form" onSubmit={handleSubmit}>
             <input name="email" type="email" required placeholder="you@company.com" aria-label="Email address" />
+            <input name="whatsapp" type="tel" required placeholder="WhatsApp number" aria-label="WhatsApp number" />
+            <textarea name="message" placeholder="Tell us about your enquiry (optional)" aria-label="Enquiry" rows={3} />
             <button type="submit" className="btn btn--primary" disabled={status === 'sending'}>
               {status === 'sending' ? 'Sending…' : 'Request a quote'}
             </button>
@@ -71,19 +76,29 @@ export default function CTASection() {
           display: flex;
           gap: 12px;
           justify-content: center;
-          flex-wrap: wrap;
+          flex-direction: column;
+          align-items: center;
         }
         .cta__form input {
-          flex: 1;
-          min-width: 220px;
-          max-width: 320px;
+          width: 100%;
+          max-width: 420px;
           padding: 14px 18px;
           border-radius: var(--radius-sm);
           border: 1.5px solid var(--color-black);
           font-size: 14px;
           background: var(--color-white);
         }
-        .cta__form input:focus {
+        .cta__form textarea {
+          width: 100%;
+          max-width: 420px;
+          padding: 14px 18px;
+          border-radius: var(--radius-sm);
+          border: 1.5px solid var(--color-black);
+          font: inherit;
+          font-size: 14px;
+          resize: vertical;
+        }
+        .cta__form input:focus, .cta__form textarea:focus {
           outline: 2px solid var(--color-black);
           outline-offset: 2px;
         }

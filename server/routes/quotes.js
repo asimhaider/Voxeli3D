@@ -7,23 +7,27 @@ import { requireAdmin } from '../middleware/adminAuth.js';
 
 const router = Router();
 
-/** POST /api/quotes — from the bottom CTA form (email only, no images). */
+/** POST /api/quotes — from the bottom CTA form (contact details and enquiry). */
 router.post('/', async (req, res) => {
-  const { email, message } = req.body || {};
-  if (!email) return res.status(400).json({ error: 'Email is required' });
+  const { email, whatsapp, message } = req.body || {};
+  const emailValue = String(email || '').trim();
+  const whatsappValue = String(whatsapp || '').trim();
+  if (!emailValue) return res.status(400).json({ error: 'Email is required' });
+  if (!whatsappValue) return res.status(400).json({ error: 'WhatsApp number is required' });
 
   const record = {
     id: nanoid(10),
     type: 'quote',
-    email,
+    email: emailValue,
+    whatsapp: whatsappValue,
     message: message || '',
     createdAt: new Date().toISOString(),
   };
   await append('quotes', record);
 
   await notify({
-    subject: `New quote request — ${email}`,
-    text: `Email: ${email}\n\nMessage: ${message || '(none)'}`,
+    subject: `New quote request — ${emailValue}`,
+    text: `Email: ${emailValue}\nWhatsApp: ${whatsappValue}\n\nEnquiry: ${message || '(none)'}`,
   });
 
   res.status(201).json({ ok: true, id: record.id });
