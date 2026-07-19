@@ -11,6 +11,7 @@ export default function QuotesTab({ quotes }) {
         <span>Email</span>
         <span>WhatsApp</span>
         <span>Enquiry</span>
+        <span>Email status</span>
         <span>Received</span>
       </div>
       {safeQuotes
@@ -21,6 +22,9 @@ export default function QuotesTab({ quotes }) {
             <span><a href={`mailto:${q.email}`}>{q.email}</a></span>
             <span>{q.whatsapp ? <a href={`https://wa.me/${q.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer">{q.whatsapp}</a> : <em>(not provided)</em>}</span>
             <span>{q.message || <em>(no message)</em>}</span>
+            <span className={`notification-status notification-status--${q.emailNotification?.status || 'unknown'}`}>
+              {q.emailNotification?.status || 'not tracked'}
+            </span>
             <span>{new Date(q.createdAt).toLocaleString()}</span>
           </div>
         ))}
@@ -30,7 +34,7 @@ export default function QuotesTab({ quotes }) {
         .admin-table { display: flex; flex-direction: column; border: 1px solid var(--color-line); border-radius: var(--radius-md); overflow: hidden; }
         .admin-table__row {
           display: grid;
-          grid-template-columns: 1.2fr 1fr 1.6fr 1fr;
+          grid-template-columns: 1.2fr 1fr 1.6fr 0.8fr 1fr;
           gap: 16px;
           padding: 14px 18px;
           font-size: 13.5px;
@@ -46,6 +50,10 @@ export default function QuotesTab({ quotes }) {
           color: var(--color-grey);
         }
         .admin-table__row a { font-weight: 600; }
+        .notification-status { font-weight: 600; text-transform: capitalize; }
+        .notification-status--sent { color: #167343; }
+        .notification-status--failed { color: #B3261E; }
+        .notification-status--pending { color: var(--color-grey); }
       `}</style>
     </div>
   );
