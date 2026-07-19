@@ -13,7 +13,20 @@ dotenv.config();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 
-app.use(cors({ origin: process.env.CORS_ORIGIN || '*' }));
+const configuredOrigins = (process.env.CORS_ORIGIN || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const isLocalDevOrigin = (origin) => /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin);
+
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || isLocalDevOrigin(origin) || configuredOrigins.length === 0 || configuredOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(null, false);
+  },
+}));
 app.use(express.json({ limit: '2mb' }));
 
 // Serve uploaded reference images back out so the frontend can preview/link them.
